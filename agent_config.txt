@@ -1,0 +1,11 @@
+# Distributed Computing Platform - Node Configuration
+# Edit the CONTROLLER_URL to match the IP address of the computer
+# running the central controller.
+#
+# Example: If the controller is at 192.168.1.50, use:
+#   CONTROLLER_URL=http://192.168.1.50:8000
+#
+# If the controller is the same computer (localhost), use:
+#   CONTROLLER_URL=http://localhost:8000
+
+CONTROLLER_URL=http://localhost:8000
