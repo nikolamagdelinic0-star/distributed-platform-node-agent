@@ -273,3 +273,70 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         agent.stop()
         logger.info("Node Agent terminated")
+
+# ──────────────────────────────────────────────────────────────────────
+# Remote Desktop Module
+# ──────────────────────────────────────────────────────────────────────
+
+class RemoteDesktopServer:
+    """Simple remote desktop using WebSocket."""
+    
+    def __init__(self, agent):
+        self.agent = agent
+        self.clients = []
+    
+    def capture_screen(self):
+        """Capture the Windows screen as bytes."""
+        try:
+            import mss
+            import numpy as np
+            with mss.mss() as sct:
+                monitor = sct.monitors[1]  # Primary monitor
+                img = np.array(sct.grab(monitor))
+                # Convert to PNG bytes
+                from PIL import Image
+                import io
+                pil_img = Image.fromarray(img)
+                buf = io.BytesIO()
+                pil_img.save(buf, format='PNG')
+                return buf.getvalue()
+        except Exception as e:
+            logger.error(f"Screen capture failed: {e}")
+            return None
+    
+    def start_server(self, port=8765):
+        """Start a simple WebSocket server for remote desktop."""
+        import asyncio
+        import websockets
+        
+        async def handler(websocket, path):
+            async for message in websocket:
+                data = json.loads(message)
+                if data.get("type") == "capture":
+                    img_bytes = self.capture_screen()
+                    if img_bytes:
+                        await websocket.send(img_bytes)
+                elif data.get("type") == "input":
+                    self._handle_input(data.get("input"))
+        
+        self.ws_server = websockets.serve(handler, "0.0.0.0", port)
+        logger.info(f"Remote desktop server on port {port}")
+    
+    def _handle_input(self, input_data):
+        """Handle mouse/keyboard input."""
+        try:
+            from pynput.mouse import Controller as MouseController
+            from pynput.keyboard import Controller as KeyboardController
+            if input_data.get("type") == "mouse":
+                mouse = MouseController()
+                mouse.position = (input_data["x"], input_data["y"])
+                if input_data.get("action") == "click":
+                    mouse.click(input_data.get("button", "left"))
+            elif input_data.get("type") == "keyboard":
+                keyboard = KeyboardController()
+                if input_data.get("action") == "press":
+                    keyboard.press(input_data.get("key"))
+                elif input_data.get("action") == "release":
+                    keyboard.release(input_data.get("key"))
+        except Exception as e:
+            logger.error(f"Input handling failed: {e}")
