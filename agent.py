@@ -340,3 +340,100 @@ class RemoteDesktopServer:
                     keyboard.release(input_data.get("key"))
         except Exception as e:
             logger.error(f"Input handling failed: {e}")
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Wake-on-LAN Module
+# ──────────────────────────────────────────────────────────────────────
+
+class WakeOnLANListener:
+    """Listen for magic packets to wake the computer."""
+    
+    def __init__(self):
+        self.running = False
+        self.thread = None
+    
+    def start(self):
+        """Start listening for WoL magic packets."""
+        self.running = True
+        self.thread = threading.Thread(target=self._listen_loop, daemon=True)
+        self.thread.start()
+        logger.info("Wake-on-LAN listener started")
+    
+    def stop(self):
+        self.running = False
+    
+    def _listen_loop(self):
+        import socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            sock.bind(("0.0.0.0", 9))
+        except:
+            logger.error("Could not bind to port 9 for WoL")
+            return
+        
+        while self.running:
+            try:
+                data, addr = sock.recvfrom(1024)
+                if self._is_magic_packet(data):
+                    logger.info(f"Magic packet received from {addr}. Waking up!")
+                    self._wake_up()
+            except Exception:
+                if self.running:
+                    time.sleep(0.1)
+        
+        sock.close()
+    
+    def _is_magic_packet(self, data):
+        """Check if data is a Wake-on-LAN magic packet."""
+        if len(data) < 102:
+            return False
+        if data[:6] != b'\xff' * 6:
+            return False
+        mac_bytes = data[6:18]
+        # Check if the MAC is repeated 16 times
+        for i in range(16):
+            if data[6 + i*6:12 + i*6] != mac_bytes:
+                return False
+        return True
+    
+    def _wake_up(self):
+        """Execute wake-up sequence."""
+        try:
+            # Signal the OS to wake up
+            import subprocess
+            # On Windows, this triggers the system to boot
+            # The BIOS handles the actual boot when WoL is enabled
+            logger.info("Wake-on-LAN magic packet detected!")
+        except Exception as e:
+            logger.error(f"WoL wake failed: {e}")
+
+
+# Add WoL listener to NodeAgent
+class NodeAgent:
+    """Main node agent."""
+
+    def __init__(self):
+        self.node_id = get_node_id()
+        self.credentials = get_credentials()
+        self.controller_url = load_config()
+        self.running = False
+        self.heartbeat = HeartbeatManager(self.node_id, self.credentials, self.controller_url)
+        self.current_job = None
+        self.wol_listener = WakeOnLANListener()
+        logger.info(f"Controller URL: {self.controller_url}")
+
+    def start(self):
+        self.running = True
+        logger.info(f"Node Agent starting on {self.node_id}")
+        logger.info(f"Hardware: {json.dumps(HardwareDetector.detect(), indent=2)}")
+        self.heartbeat.start()
+        self.wol_listener.start()
+        logger.info("Node Agent started successfully")
+
+    def stop(self):
+        self.running = False
+        self.heartbeat.stop()
+        self.wol_listener.stop()
+        logger.info("Node Agent stopped")

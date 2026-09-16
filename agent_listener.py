@@ -46,3 +46,20 @@ if __name__ == "__main__":
     server = HTTPServer(('0.0.0.0', 8001), JobHandler)
     logger.info("Agent listener running on port 8001")
     server.serve_forever()
+
+
+# Add MAC address endpoint
+class MacHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        import uuid
+        mac = ':'.join(('{:012x}'.format(uuid.getnode())[i:i+2] for i in range(0, 12, 2)))
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps({"mac_address": mac}).encode())
+    
+    def log_message(self, format, *args):
+        pass
+
+# Add to the handler class
+JobHandler.do_GET = MacHandler.do_GET

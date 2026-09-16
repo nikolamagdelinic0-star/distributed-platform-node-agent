@@ -162,3 +162,64 @@ async def node_metrics(body: Request, db: Session = Depends(get_db)):
         return {"status": "ok", "node_id": node_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{node_id}/wake")
+def wake_node(node_id: str, db: Session = Depends(get_db), current_user: Any = Depends(get_current_user)):
+    """Send Wake-on-LAN magic packet to wake a node."""
+    node = db.query(Node).filter(Node.node_id == node_id).first()
+    if not node:
+        raise HTTPException(status_code=404, detail="Node not found")
+    
+    # Import wakeonlan
+    try:
+        from wakeonlan import send_magic_packet
+        import subprocess
+        import json
+        import urllib.request
+        # Get node MAC address
+        mac = node.mac_address if hasattr(node, 'mac_address') else None
+        if not mac:
+            # Try to get MAC from hardware info stored in the node
+            mac = _get_node_mac(node_id)
+        
+        if mac:
+            # Send magic packet using Python
+            import socket
+            mac_bytes = bytes.fromhex(mac.replace(':', '').replace('-', ''))
+            magic_packet = b'\xff' * 6 + mac_bytes * 16
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            sock.sendto(magic_packet, ('255.255.255.255', 9))
+            sock.close()
+            return {"message": f"Wake-on-LAN packet sent to {node_id}", "node_id": node_id, "status": "sending"}
+        else:
+            # Try to wake via the node agent's WoL listener
+            try:
+                resp = requests.post(f"http://{node.hostname}:8002/wake", timeout=2)
+                return {"message": f"Wake signal sent", "node_id": node_id, "status": "sending"}
+            except:
+                return {"message": f"Could not determine MAC address for {node_id}. Please add MAC to node record.", "node_id": node_id, "status": "pending"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"WoL failed: {str(e)}")
+
+
+@router.get("/{node_id}/power-status")
+def power_status(node_id: str, db: Session = Depends(get_db), current_user: Any = Depends(get_current_user)):
+    """Check if a node is powered on."""
+    node = db.query(Node).filter(Node.node_id == node_id).first()
+    if not node:
+        raise HTTPException(status_code=404, detail="Node not found")
+    is_on = node.current_status in ["ONLINE", "BUSY"]
+    return {"node_id": node_id, "is_powered_on": is_on, "status": node.current_status}
+
+
+def _get_node_mac(node_id: str) -> str:
+    """Try to get the MAC address of a node."""
+    try:
+        resp = requests.get(f"http://localhost:8001/mac-address", timeout=2)
+        if resp.status_code == 200:
+            return resp.json().get("mac_address")
+    except:
+        pass
+    return None

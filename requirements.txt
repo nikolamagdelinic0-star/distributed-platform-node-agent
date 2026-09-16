@@ -36,3 +36,4 @@ ipykernel>=6.25.0
 mss>=9.0.0
 pynput>=1.7.6
 pygetwindow>=0.0.9
+wakeonlan>=4.0.0
