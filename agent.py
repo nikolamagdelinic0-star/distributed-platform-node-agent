@@ -162,6 +162,15 @@ class HardwareDetector:
             return 999.0
 
     @staticmethod
+    def _get_mac():
+        try:
+            import uuid
+            mac = uuid.getnode()
+            return ':'.join(('%012X' % mac)[i:i+2] for i in range(0, 12, 2))
+        except:
+            return None
+
+    @staticmethod
     def _get_bandwidth():
         try:
             net_io = psutil.net_io_counters()
